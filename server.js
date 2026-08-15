@@ -167,7 +167,7 @@ async function iniciarRoboDefinitivo() {
     
     try {
         const context = await chromium.launchPersistentContext(caminhoSessao, {
-            headless: false,
+            headless: true,
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             viewport: { width: 1366, height: 768 }
         });
@@ -340,7 +340,8 @@ async function iniciarRoboDefinitivo() {
     }
 }
 
-server.listen(3000, () => {
-    console.log('Painel comercial rodando em http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Painel comercial rodando na porta ${PORT}`);
     iniciarRoboDefinitivo();
 });
