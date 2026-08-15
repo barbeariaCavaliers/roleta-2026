@@ -182,21 +182,21 @@ async function iniciarRoboDefinitivo() {
         setInterval(async () => {
             try {
                 const numerosGrid = await page.evaluate(() => {
-                    const blocos = document.querySelectorAll('.history-grid > div, .roulette-history > div, [class*="result-"], [class*="item"]');
+                    // Seleciona diretamente os elementos circulares com os números da roleta
+                    const blocos = document.querySelectorAll('div.cell__circle');
                     const resultadosLimpos = [];
 
                     blocos.forEach(bloco => {
-                        const texto = bloco.innerText || "";
-                        if (/\d{2}:\d{2}/.test(texto)) {
-                            const lines = texto.split('\n');
-                            const numeroTexto = lines[0].trim(); 
-                            if (numeroTexto !== "" && /^\d+$/.test(numeroTexto)) {
-                                const num = parseInt(numeroTexto, 10);
-                                if (num >= 0 && num <= 36) resultadosLimpos.push(num);
+                        const texto = bloco.innerText ? bloco.innerText.trim() : "";
+                        if (texto !== "" && /^\d+$/.test(texto)) {
+                            const num = parseInt(texto, 10);
+                            if (num >= 0 && num <= 36) {
+                                resultadosLimpos.push(num);
                             }
                         }
                     });
 
+                    // Remove duplicados mantendo a ordem correta do histórico recente
                     const listaSemDuplicados = [];
                     resultadosLimpos.forEach(num => {
                         if (listaSemDuplicados.length === 0 || listaSemDuplicados[listaSemDuplicados.length - 1] !== num) {
