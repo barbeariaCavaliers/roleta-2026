@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roleta Matrix - Painel de Sinais</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #f0f6fc;
+            --accent-color: #00ff66;
+            --accent-danger: #ff3333;
+            --border-color: #30363d;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Container simulando tela de celular */
+        .app-container {
+            width: 100%;
+            max-width: 410px;
+            background-color: #070a0e;
+            min-height: 90vh;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            letter-spacing: 1px;
+        }
+
+        header p {
+            margin: 5px 0 0;
+            font-size: 0.8rem;
+            color: #8b949e;
+        }
+
+        .content {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: rgba(0, 255, 102, 0.1);
+            color: var(--accent-color);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .signal-box {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 15px 0;
+            min-height: 40px;
+            color: #ffffff;
+        }
+
+        .highlight {
+            color: var(--accent-color);
+            font-size: 1.4rem;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background-color: #0d1117;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-item span {
+            display: block;
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .stat-item strong {
+            font-size: 1.2rem;
+            color: #fff;
+        }
+
+        /* Histórico de Bolinhas Modificado */
+        .historico-container {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .bola {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            border-radius: 50%;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+        }
+
+        .bola-vermelha { background-color: #e02424; }
+        .bola-preta { background-color: #1f2937; border: 1px solid #4b5563; }
+        .bola-verde { background-color: #10b981; }
+
+        /* Animação simples de carregamento */
+        .loading {
+            color: #8b949e;
+            font-style: italic;
+        }
+    </style>
+    <!-- Importação obrigatória do Socket.io do Servidor -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>ROLETA MATRIX</h1>
+            <p>Análise de Tendências & Inteligência Preditiva</p>
+        </header>
+
+        <div class="content">
+            <!-- Card do Sinal Principal -->
+            <div class="card">
+                <span class="status-badge" id="status">AGUARDANDO GIRO</span>
+                <div class="signal-box" id="signal-display">
+                    <span class="loading">Sincronizando com a mesa ao vivo...</span>
+                </div>
+            </div>
+
+            <!-- Card de Estatísticas Rápidas -->
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span>ASSERTIVIDADE HOJE</span>
+                    <strong style="color: var(--accent-color);">94.2%</strong>
+                </div>
+                <div class="stat-item">
+                    <span>ÚLTIMO NÚMERO</span>
+                    <strong id="target-stat">--</strong>
+                </div>
+            </div>
+
+            <!-- Card de Histórico de Giros Recentes -->
+            <div class="card">
+                <span style="font-size: 0.75rem; color: #8b949e; display:block; margin-bottom: 5px;">ÚLTIMOS GIROS DETECTADOS</span>
+                <div class="historico-container" id="historico-lista">
+                    <!-- Bolinhas entram automaticamente aqui -->
+                </div>
+            </div>
+
+            <!-- Card de Gestão de Banca Rápido -->
+            <div class="card" style="text-align: left;">
+                <span style="font-size: 0.8rem; color: #8b949e; display:block;">GESTÃO RECOMENDADA</span>
+                <strong style="font-size: 1rem; color: #fff; display:block; margin-top: 5px;">Entrada: 1% a 2% da banca</strong>
+                <span style="font-size: 0.75rem; color: var(--accent-danger); display:block; margin-top: 3px;">⚠️ Proteger até a 2ª cobertura (se necessário).</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const numerosVermelhos = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+        socket.on('atualizacao_sinal', (dados) => {
+            console.log("Dados Matrix recebidos:", dados);
+
+            const statusBadge = document.getElementById('status');
+            const signalDisplay = document.getElementById('signal-display');
+            const targetStat = document.getElementById('target-stat');
+            const historicoLista = document.getElementById('historico-lista');
+
+            // 1. Atualiza o Badge de Status Superior com cor dinâmica
+            statusBadge.innerText = dados.status;
+            if (dados.status === "SINAL CONFIRMADO") {
+                statusBadge.style.color = "var(--accent-color)";
+                statusBadge.style.background = "rgba(0, 255, 102, 0.1)";
+            } else {
+                statusBadge.style.color = "#ffaa00";
+                statusBadge.style.background = "rgba(255, 170, 0, 0.1)";
+            }
+
+            // 2. Trata o layout do texto do sinal se houver uma confirmação
+            if (dados.sinal.includes("Entrar na cor:")) {
+                const parteCor = dados.sinal.replace("Entrar na cor:", "").trim();
+                signalDisplay.innerHTML = `Entrada confirmada em: <span class="highlight">${parteCor}</span>`;
+            } else {
+                signalDisplay.innerHTML = `<span class="loading">${dados.sinal}</span>`;
+            }
+
+            // 3. Atualiza o indicador de Último Número Central
+            targetStat.innerText = dados.numero;
+
+            // 4. Renderiza o histórico de bolinhas com as cores corretas da Roleta
+            if (dados.historico && dados.historico.length > 0) {
+                historicoLista.innerHTML = ''; // Limpa a linha
+                
+                dados.historico.forEach(num => {
+                    const bola = document.createElement('div');
+                    bola.innerText = num;
+                    
+                    if (num === 0) {
+                        bola.className = 'bola bola-verde';
+                    } else if (numerosVermelhos.includes(num)) {
+                        bola.className = 'bola bola-vermelha';
+                    } else {
+                        bola.className = 'bola bola-preta';
+                    }
+                    
+                    historicoLista.appendChild(bola);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
