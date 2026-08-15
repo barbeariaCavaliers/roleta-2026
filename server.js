@@ -90,6 +90,14 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Rota para visualizar o print de diagnóstico atualizado
+app.get('/print', (req, res) => {
+    const caminhoPrint = path.join(__dirname, 'erro_tipminer.png');
+    res.sendFile(caminhoPrint, (err) => {
+        if (err) res.status(404).send('Print ainda não foi gerado ou não encontrado.');
+    });
+});
+
 // ========================================================
 // MOTOR DE ANÁLISE DE ESTRATÉGIAS
 // ========================================================
@@ -100,11 +108,7 @@ function analisarEstrategia(historico) {
 
     const numMaisRecente = historico[0];
 
-    // --------------------------------------------------------
-    // ESTRATÉGIA 1: VIZINHO DO 0, 6, 10 e 28 (Gatilhos 4, 8, 14, 20, 27, 36)
-    // --------------------------------------------------------
     const gatilhosVizinhos1 = [4, 8, 14, 20, 27, 36];
-
     if (gatilhosVizinhos1.includes(numMaisRecente)) {
         return {
             status: "SINAL CONFIRMADO",
@@ -115,11 +119,7 @@ function analisarEstrategia(historico) {
         };
     }
 
-    // --------------------------------------------------------
-    // ESTRATÉGIA 2: VIZINHO DO 1, 11, 21 e 22 (Gatilhos  0 , 3, 9,10, 11,12,16, 23, 31)
-    // --------------------------------------------------------
     const gatilhosVizinhos2 = [0 , 3, 9,10, 11,12,16, 23, 31];
-
     if (gatilhosVizinhos2.includes(numMaisRecente)) {
         return {
             status: "SINAL CONFIRMADO",
@@ -136,7 +136,6 @@ function analisarEstrategia(historico) {
     };
 }
 
-// Socket Connection
 io.on('connection', (socket) => {
     console.log('[Painel] Um usuário se conectou.');
     const ultimoNum = historicoRoleta[0] || '--';
@@ -159,17 +158,31 @@ io.on('connection', (socket) => {
 });
 
 // ==========================================
-// CAPTURA AVANÇADA DE ELEMENTOS DE JOGO
+// CAPTURA AVANÇADA COM ANTI-DETECT
 // ==========================================
 async function iniciarRoboDefinitivo() {
-    console.log('[Robô] Inicializando navegador com sessão persistente...');
+    console.log('[Robô] Inicializando navegador com sessão persistente e anti-detect...');
     const caminhoSessao = path.join(__dirname, 'sessao_bot');
     
     try {
         const context = await chromium.launchPersistentContext(caminhoSessao, {
             headless: true,
+            args: [
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-infobars',
+                '--window-size=1366,768'
+            ],
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             viewport: { width: 1366, height: 768 }
+        });
+
+        // Mascara o navigator.webdriver para evitar detecção do Cloudflare
+        await context.addInitScript(() => {
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => false,
+            });
         });
 
         const page = context.pages()[0] || await context.newPage();
@@ -179,11 +192,11 @@ async function iniciarRoboDefinitivo() {
         await page.goto('https://www.tipminer.com/br/cassinos/pragmatic/roleta-brasileira', { waitUntil: 'load', timeout: 60000 });
         console.log('[Robô] Página carregada com sucesso!');
 
-        // Tira um print após 5 segundos para verificar o que o robô está vendo no Render
+        // Tira um novo print após 5 segundos para conferir se passou do Cloudflare
         setTimeout(async () => {
             try {
                 await page.screenshot({ path: 'erro_tipminer.png', fullPage: true });
-                console.log('[Robô] Screenshot de diagnóstico salvo como erro_tipminer.png');
+                console.log('[Robô] Screenshot de diagnóstico atualizado salvo.');
             } catch (e) {
                 console.log('[Erro Screenshot]:', e.message);
             }
@@ -351,11 +364,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Painel comercial rodando na porta ${PORT}`);
     iniciarRoboDefinitivo();
-});
-// Rota temporária para visualizar o print de diagnóstico no navegador
-app.get('/print', (req, res) => {
-    const caminhoPrint = path.join(__dirname, 'erro_tipminer.png');
-    res.sendFile(caminhoPrint, (err) => {
-        if (err) res.status(404).send('Print ainda não foi gerado ou não encontrado.');
-    });
 });
