@@ -1,5 +1,3 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -82,29 +80,6 @@ function calcularEstatisticasPuxadas(historico) {
     estatisticasFormatadas.sort((a, b) => b.vezes - a.vezes);
     return estatisticasFormatadas.slice(0, 5); // Retorna os top 5 padrões mais fortes
 }
-
-// ========================================================
-// CONFIGURAÇÃO DO WHATSAPP
-// ========================================================
-const whatsapp = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    }
-});
-
-whatsapp.on('qr', (qr) => {
-    console.log('[WhatsApp] Escaneie o QR Code abaixo para conectar o robô:');
-    qrcode.generate(qr, { small: true });
-});
-
-whatsapp.on('ready', () => {
-    console.log('[WhatsApp] Robô conectado com sucesso e pronto para enviar mensagens!');
-});
-
-whatsapp.initialize();
-
-const seuNumeroWhatsApp = '5517988371855@c.us';
 
 // ========================================================
 // SERVIDOR WEB & SOCKET.IO
@@ -346,38 +321,6 @@ async function iniciarRoboDefinitivo() {
                             historicoEstrategias: historicoEstrategias,
                             estatisticasPuxadas: estatisticas
                         });
-
-                        // MONTAGEM E ENVIO DA MENSAGEM DO WHATSAPP
-                        if (analise.status === "SINAL CONFIRMADO" || analise.status === "GREEN CONFIRMADO" || analise.status === "SINAL FINALIZADO" || analise.status === "EM GALE") {
-                            let textoMensagem = `🤖 *ROLETA BRASILEIRA* *STAKE*🤖\n`;
-                            textoMensagem += `📊 *Placar Geral:* ✅ ${greens} | ❌ ${reds} (${assertividadeAtual}%)\n\n`; 
-                            textoMensagem += `📌 *Status:* ${analise.status}\n`;
-                            textoMensagem += `🎯 *Resultado / Ação:* ${analise.sinal}\n\n`;
-
-                            if (estatisticas.length > 0) {
-                                textoMensagem += `📈 *Top Puxadas Recentes:*\n`;
-                                estatisticas.slice(0, 3).forEach(item => {
-                                    textoMensagem += `• Nº ${item.numero} puxou mais o *${item.puxouMais}* (${item.vezes}x)\n`;
-                                });
-                                textoMensagem += `\n`;
-                            }
-
-                            if (historicoEstrategias.length > 0) {
-                                textoMensagem += `📜 *Histórico de Entradas Recentes:*\n`;
-                                historicoEstrategias.forEach((item, index) => {
-                                    const icone = item.resultado === 'GREEN' ? '✅' : '❌';
-                                    textoMensagem += `${index + 1}. ${icone} *${item.estrategia}* (${item.detalhe} - Nº ${item.numero})\n`;
-                                });
-                                textoMensagem += `\n`;
-                            }
-
-                            textoMensagem += `⏱️ *Último Giro:* Número ${numeroSorteado}\n`;
-                            textoMensagem += `📱 _Enviado via Inteligência Adriano Costa_`;
-
-                            whatsapp.sendMessage(seuNumeroWhatsApp, textoMensagem)
-                                .then(() => console.log(`[WhatsApp] Alerta enviado com estatísticas!`))
-                                .catch(err => console.error('[WhatsApp] Erro ao enviar mensagem:', err.message));
-                        }
                     }
                 }
 
