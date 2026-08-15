@@ -352,3 +352,10 @@ server.listen(PORT, () => {
     console.log(`Painel comercial rodando na porta ${PORT}`);
     iniciarRoboDefinitivo();
 });
+// Rota temporária para visualizar o print de diagnóstico no navegador
+app.get('/print', (req, res) => {
+    const caminhoPrint = path.join(__dirname, 'erro_tipminer.png');
+    res.sendFile(caminhoPrint, (err) => {
+        if (err) res.status(404).send('Print ainda não foi gerado ou não encontrado.');
+    });
+});
