@@ -179,10 +179,19 @@ async function iniciarRoboDefinitivo() {
         await page.goto('https://www.tipminer.com/br/cassinos/pragmatic/roleta-brasileira', { waitUntil: 'load', timeout: 60000 });
         console.log('[Robô] Página carregada com sucesso!');
 
+        // Tira um print após 5 segundos para verificar o que o robô está vendo no Render
+        setTimeout(async () => {
+            try {
+                await page.screenshot({ path: 'erro_tipminer.png', fullPage: true });
+                console.log('[Robô] Screenshot de diagnóstico salvo como erro_tipminer.png');
+            } catch (e) {
+                console.log('[Erro Screenshot]:', e.message);
+            }
+        }, 5000);
+
         setInterval(async () => {
             try {
                 const numerosGrid = await page.evaluate(() => {
-                    // Seleciona diretamente os elementos circulares com os números da roleta
                     const blocos = document.querySelectorAll('div.cell__circle');
                     const resultadosLimpos = [];
 
@@ -196,7 +205,6 @@ async function iniciarRoboDefinitivo() {
                         }
                     });
 
-                    // Remove duplicados mantendo a ordem correta do histórico recente
                     const listaSemDuplicados = [];
                     resultadosLimpos.forEach(num => {
                         if (listaSemDuplicados.length === 0 || listaSemDuplicados[listaSemDuplicados.length - 1] !== num) {
@@ -225,7 +233,6 @@ async function iniciarRoboDefinitivo() {
 
                         let analise = { status: "ANALISANDO MESA", sinal: `Último número foi ${numeroSorteado}. Aguardando padrão...` };
 
-                        // Validação de Sinais Ativos com 2 Gales (Entrada + G1 + G2)
                         if (sinalPendente) {
                             let ganhou = false;
 
